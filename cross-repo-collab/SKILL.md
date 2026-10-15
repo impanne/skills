@@ -51,15 +51,16 @@ description: "Use when people and agents across separate repositories share requ
 id = "fe/cursor-k"
 ```
 
-格式 `<角色>/<昵称>`。角色取 `pm` `be` `fe` `qa` `ops`。昵称标识这个人，或这一台机器上的这一个 Agent。同一个人换仓库时昵称不变，只改角色：后端里是 `be/kevin`，前端里是 `fe/kevin`。
+格式 `<角色>/<昵称>`。角色取 `pm` `be` `fe` `qa` `ops`。昵称标识这个人，或这一台机器上的这一个 Agent。同一个人换仓库时昵称不变，只改角色：后端里是 `be/kevin`，前端里是 `fe/kevin`，名册里各占一行。Issue 和提交说明里的 `[身份]` 必须能在 `collaborators.md` 对上。
 
 没有身份文件时：
 
 1. 远程已有 `agents` 时，先拉取到最新。初始化的第一次提交跳过拉取，名册行放进「初始化协作仓库」那一次提交，推送成功后再写身份文件。
-2. 角色：当前仓库地址能对上 `parties/<id>/README.md` 里的代码仓库时，用那一方写明的角色。对不上时，后端仓库用 `be`，前端仓库用 `fe`。仍不能判断就问用户一句，只问角色。
-3. 昵称：用户说过就用用户的。否则用 `<工具名>-<主机名末两位字母>`，例如 `cursor-k`。名册里已有就在末尾加数字。Cursor 用 `cursor`，Claude Code 用 `claude`，其他用工具的小写短名。
-4. 在 `collaborators.md` 追加一行：身份、`Agent` 或 `人`、所属产品仓库的远程地址、当天日期（`YYYY-MM-DD`）。提交到 `agents` 并推送。
-5. 推送成功后再写 `identity.toml`。推送未成功，或拉取后发现这个 id 已被占用，就换一个 id 再推，不要用它发言。
+2. 用 `git remote get-url origin` 读当前产品仓库地址。名册里已有一行的所属仓库与它相同，就用那一行的身份和参与方。
+3. 对不上时只登记自己。用户说过参与方和角色就用用户的。没说过时，后端仓库用参与方 `backend`、角色 `be`，前端仓库用角色 `fe`。同一角色有多个参与方、又对不上仓库时，只问自己的参与方 id。不要问别人的仓库地址，也不要替别人加行。
+4. 昵称：用户说过就用用户的。否则用 `<工具名>-<主机名末两位字母>`，例如 `cursor-k`。名册里已有就在末尾加数字。Cursor 用 `cursor`，Claude Code 用 `claude`，其他用工具的小写短名。
+5. 在 `collaborators.md` 追加自己的一行：身份、参与方、`Agent` 或 `人`、上面读到的 origin、当天日期（`YYYY-MM-DD`）。`parties/<参与方>/` 不存在就创建，代码仓库写成这个 origin。已存在且仍是「尚未写入」时，改成这个 origin。角色是 `be` 且还没有 `api/<参与方>/` 时，补上该目录的 README。
+6. 提交到 `agents` 并推送。推送成功后再写 `identity.toml`。推送未成功，或拉取后发现这个 id 已被占用，就换一个 id 再推，不要用它发言。
 
 ## 分支与推送
 
@@ -109,7 +110,7 @@ git checkout agents || git checkout -b agents --track origin/agents
 只有这些情况停下来问：
 
 - 远程有提交，但不是这套协作目录
-- 判断不了自己的角色
+- 判断不了自己的角色或参与方
 - 检出工作区不干净
 - 稳定分支不是 `agents` 的祖先
 - 向 `agents` 的推送被拒绝
@@ -119,7 +120,7 @@ git checkout agents || git checkout -b agents --track origin/agents
 
 ## 初始化
 
-缺了这些才问，已经说过的不要再问：协作仓库的远程 URL；每个参与方的 id、角色、代码仓库地址。检出目录名能从 URL 最后一段得到就直接用。参与方 id 用 `backend`、`user`、`admin` 这种名字，不要用角色名当 id。
+缺了协作仓库的远程 URL 才问。检出目录名能从 URL 最后一段得到就直接用。参与方只登记当前这一方，id 用 `backend`、`user`、`admin` 这种名字，不要用角色名当 id。代码仓库地址用本仓库的 `git remote get-url origin`。不要询问、不要填写其他协作者的身份或仓库地址。用户已经说出的其他参与方可以建目录，代码仓库写「尚未写入」。
 
 然后：
 
@@ -136,9 +137,9 @@ git checkout agents || git checkout -b agents --track origin/agents
 
 1. 写入 `templates/README.md`、`templates/AGENTS.md`。替换 `{{repo_name}}` `{{parties}}` `{{checkout_dir}}` `{{remote_url}}` `{{gitlab_path}}` `{{github_path}}` `{{gitlab_path_encoded}}`。`{{gitlab_path_encoded}}` 是 `{{gitlab_path}}` 的每个 `/` 换成 `%2F`。删掉用不到的 `<!-- platform:gitlab -->` 或 `<!-- platform:github -->` 整段。
 2. 写入 `templates/collaborators.md`、`templates/reqs-README.md`（放到 `reqs/README.md`）、`templates/req.md`（放到 `reqs/_template.md`）、`templates/api-README.md`、`templates/domain.md`（放到 `parties/_domain.md`）。`api/README.md` 的 `{{external_tool}}` 写成「尚未决定。第一次发布接口给人浏览或测试时，由发布方询问用户。」
-3. 每个参与方：`parties/<id>/README.md` 用 `templates/party-README.md`，并建立 `parties/<id>/domains/`。
-4. 角色是 `be` 的参与方：`api/<id>/README.md` 用 `templates/api-provider-README.md`。其他方先不建 `api/` 目录。
-5. 按「身份」选出 id，把名册行放进同一次提交。先不要单独推送。
+3. 当前参与方：`parties/<id>/README.md` 用 `templates/party-README.md`，代码仓库填本仓库 origin，并建立 `parties/<id>/domains/`。用户点过名的其他参与方同样建目录，代码仓库写「尚未写入」。
+4. 角色是 `be` 且人已经在场的参与方：`api/<id>/README.md` 用 `templates/api-provider-README.md`。其他方先不建 `api/` 目录。
+5. 按「身份」只把当前协作者写入名册，放进同一次提交。先不要单独推送。
 6. GitLab 把 `templates/issue.md` 放到 `.gitlab/issue_templates/需求.md`。GitHub 把 `templates/github-issue.md` 放到 `.github/ISSUE_TEMPLATE/需求.md`。
 7. 提交，说明写 `初始化协作仓库`。远程还没有 `agents`，直接 `git push -u origin agents`。推送成功后再写 `identity.toml`。
 8. 只执行 README 里留下的那一平台的「补标签」命令。已存在就跳过，其他错误停。
