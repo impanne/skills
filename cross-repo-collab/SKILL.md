@@ -1,6 +1,6 @@
 ---
 name: cross-repo-collab
-description: Use when people and agents in separate backend or frontend repositories need one git place for requirements, agreements, and API files, or when that collaboration repository is not set up yet.
+description: "Use when people and agents across separate repositories share requirements, agreements, and API files in a git collaboration checkout at .collab/, or when that checkout is missing. Daily work happens on the agents branch: pull --rebase before push, and write conclusions back without waiting for a human merge. Triggers include 协作仓库, .collab, 接口变更, 需求约定, to-be, to-fe, and any change that depends on another repository's behavior."
 ---
 
 # 跨仓库协作
@@ -11,7 +11,30 @@ description: Use when people and agents in separate backend or frontend reposito
 
 这些内容如果留在聊天里，另一个仓库里的 Agent 看不到。如果各写各的文档，字段和行为会对不上。因此另有一个 Git 仓库作为正本：文件放已确认的内容和接口文件，Issue 放讨论和派发。每个产品仓库把这个正本检出到自己的 `.collab/` 里再读写。
 
-本 skill 是这套做法的定义。协作仓库一旦建好，里面的 `README.md` 和 `AGENTS.md` 就是给每天进来的人和 Agent 看的规则，内容来自 `templates/`。以后改做法，先改本 skill 的模板，再向协作仓库提合并请求，让两处一致。
+日常正本是协作仓库的 `agents` 分支。`main`（有的远程叫 `master`）只给人留快照，Agent 不向它推送，也不为了日常更新去开合并请求。
+
+本 skill 管三件所有协作仓库都一样的事：工作分支、推送前拉取、哪些操作不用询问。评论格式、状态和目录在 `templates/AGENTS.md`，初始化时写入协作仓库。开工后读检出里的那份并执行。
+
+## 固定规则
+
+下面三件以本 skill 为准。检出里的 `AGENTS.md` 还没有这些句子时，先用模板把规则文件更新到 `agents` 并推送，再继续别的事：
+
+- `工作分支是 agents。`
+- `git pull --rebase origin agents`
+
+更新时用模板重新生成这三份，填回仓库里已经写好的远程、目录名、参与方、平台和编码后的仓库路径：`AGENTS.md`、`README.md`、`reqs/_template.md`。参与方自己的 README 留着，不要覆盖。产品仓库里 `<!-- cross-repo-collab:start -->` 到 `<!-- cross-repo-collab:end -->` 的区块换成 `templates/product-sync.md`。
+
+需求正文、约定和接口文件以检出为准。
+
+## 更新时机
+
+何时进入协作仓库、何时把结论写回，正文以 `templates/product-sync.md` 为准。初始化时把这份正文写进产品仓库的 `AGENTS.md` 和 `CLAUDE.md`，两份相同。
+
+- 文件不存在就创建，内容就是这个区块。
+- 已有开始和结束标记就整段替换。
+- 没有标记就追加到文件末尾。
+
+产品仓库允许当前分支推送时，把这个区块单独提交并推送。推送被拒绝就留在工作区并说明，协作仓库的初始化不因此停下。
 
 ## 本地布局
 
@@ -28,88 +51,112 @@ description: Use when people and agents in separate backend or frontend reposito
 id = "fe/cursor-k"
 ```
 
-格式 `<角色>/<昵称>`。角色取 `pm` `be` `fe` `qa` `ops`。昵称标识这个人，或这一台机器上的这一个 Agent。同一个前端仓库里可以同时有 `fe/cursor-k` 和 `fe/claude-02`，不要都叫成仓库名。人在后端仓库工作时用 `be`，在前端仓库工作时用 `fe`，除非用户指定别的角色。
+格式 `<角色>/<昵称>`。角色取 `pm` `be` `fe` `qa` `ops`。昵称标识这个人，或这一台机器上的这一个 Agent。同一个人换仓库时昵称不变，只改角色：后端里是 `be/kevin`，前端里是 `fe/kevin`。
 
-还没有身份文件时，读检出里的 `collaborators.md`。选一个没有出现过的 id，向用户重复一遍并得到同意，先把一行写入名册（身份、人还是 Agent、所属产品仓库、日期），再写 TOML。名册的合并请求同样要在推送前得到用户同意。
+没有身份文件时：
 
-## 每次开工
+1. 远程已有 `agents` 时，先拉取到最新。初始化的第一次提交跳过拉取，名册行放进「初始化协作仓库」那一次提交，推送成功后再写身份文件。
+2. 角色：当前仓库地址能对上 `parties/<id>/README.md` 里的代码仓库时，用那一方写明的角色。对不上时，后端仓库用 `be`，前端仓库用 `fe`。仍不能判断就问用户一句，只问角色。
+3. 昵称：用户说过就用用户的。否则用 `<工具名>-<主机名末两位字母>`，例如 `cursor-k`。名册里已有就在末尾加数字。Cursor 用 `cursor`，Claude Code 用 `claude`，其他用工具的小写短名。
+4. 在 `collaborators.md` 追加一行：身份、`Agent` 或 `人`、所属产品仓库的远程地址、当天日期（`YYYY-MM-DD`）。提交到 `agents` 并推送。
+5. 推送成功后再写 `identity.toml`。推送未成功，或拉取后发现这个 id 已被占用，就换一个 id 再推，不要用它发言。
 
-1. 进入 `.collab/<协作仓库目录>/`。`git status` 有未提交改动就停，不要拉取覆盖。然后 `git pull`。
-2. 读本仓库的 `AGENTS.md`。它和本文日常步骤不一致时，以仓库里的 `AGENTS.md` 为准，并告诉用户两处已经分叉。
-3. 列出未关闭、带 `to-<你的角色>` 的 Issue。GitLab 用 `glab issue list`，GitHub 用 `gh issue list`。具体仓库路径写在协作仓库 README 的命令里。
-4. 逐个打开这些 Issue。只处理两类评论：`@` 到你的 id 的，以及 `@<你的角色>/*` 且还没有人回复的。再读评论里点名的 `reqs/*.md`。
-5. 看 `reqs/README.md` 的认领列。等于你的 id 的是你已认领的；等于 `fe/*` 这种通配、且通配角色与你相同的，是这一角色还没人认领的。
+## 分支与推送
 
-不要把 `parties/` 和所有需求文件读一遍来找任务。
+工作分支是 `agents`。Agent 只推这个分支。禁止强推，禁止改写已经推送的提交。
 
-产品仓库的 `AGENTS.md` 只需要一句引导：跨仓库的需求、约定和接口文件以 `.collab/<目录>/AGENTS.md` 为准。不要在产品仓库里再抄一套规则。
+远程还没有 `agents` 时，先在本地提交，再执行 `git push -u origin agents`，不要先拉取。
 
-## 说话和确认
+远程已经有 `agents` 时，每次推送之前在检出目录执行：
 
-讨论写在 Issue 评论里。每条以 `[<id>]` 开头。要某人处理时写 `@<id>` 或 `@<角色>/*`，并给 Issue 加上对方的 `to-*` 标签。对方做完就去掉这个标签；后面还有别人，再加上下一个。
-
-回答必须用平台的「回复此评论」，这样后来的 Agent 能看出答的是哪一句，而不必通读整条 Issue。
-
-```
-[fe/cursor-k] 问 @be/*：验证码错误时，微信 code 是否仍可使用？
-[be/claude-01] 答：仍可使用。短信验证码先校验，错误码 2012。
-[pm/kevin] ✅ 确认
-[fe/cursor-k] 接口变更申请 @be/*：注册响应需要让前端知道这次是不是新用户。
+```bash
+git checkout agents
+git status --porcelain
 ```
 
-`✅ 确认` 的人必须不是被确认那条评论的作者。Agent 可以确认别人的结论，不能确认自己刚写的那条。确认之后开分支，把该结论写入需求文件的「约定」和「变更记录」。行为会改变某一端对外说明时，同时改 `parties/<id>/domains/` 下对应的文档。所有待确认点都进入「约定」后，状态改为 `已确认`，标签从 `discussing` 改为 `confirmed`。
+有输出就停，把状态告诉用户。没有输出再执行：
 
-实现落在产品仓库。产品仓库的变更合入后，再把协作仓库里的状态改为 `已实现`，标签改为 `done`，关闭 Issue。放弃则状态 `已废弃`，标签 `wontfix`。
+```bash
+git pull --rebase origin agents
+git push origin agents
+```
 
-推送、发表评论、创建 Issue 和合并请求之前向用户确认。主分支由人合并。一次合并请求只做一件事。
+先在本地提交，再执行上面的拉取和推送。`git pull` 不带 `--rebase` 不算数。
 
-## 需求文件
+变基冲突时：
 
-一对一：`reqs/<主题>-<三位序号>.md` 加一个 Issue。编号取 `reqs/` 现有文件的下一号。文件结构用 `templates/req.md`。状态只用 `草稿` `讨论中` `已确认` `已实现` `已废弃`。
+- `reqs/README.md` 和 `collaborators.md`：两边的行都留下，再继续变基。
+- 自己的新需求编号和已有文件撞号：给自己的文件换下一个编号，再提交、再拉取、再推送。
+- 其他文件：执行 `git rebase --abort`，告诉用户冲突路径，然后停。
 
-「需求」写目标、范围和可以验收的条件。「约定」只写已经确认的行为：谁先做什么、出错时怎样、边界是什么。字段名和类型以 `api/` 里的文件为准，不抄进约定。
+开工时还要确认稳定分支没有跑到前面：
 
-新建时从主分支开分支，写文件，更新 `reqs/README.md`，用 `templates/issue.md` 开 Issue，把编号写回文件，再开合并请求。参与方写 `parties/` 的 id。两个前端单独协作时参与方可以没有 `backend`。
+```bash
+git fetch origin --prune
+git checkout agents || git checkout -b agents --track origin/agents
+```
 
-认领是把 `fe/*` 改成自己的 id，在 Issue 里说明，并打上自己的 `to-*`。
+远程有 `main` 时执行 `git merge-base --is-ancestor origin/main origin/agents`。远程没有 `main`、有 `master` 时，把命令里的 `main` 换成 `master`。命令失败就停：不要把稳定分支合并进来，也不要替人把 `agents` 合并进稳定分支。远程还没有稳定分支时跳过这次比较。
 
-## 接口文件
+`agents` 推送被拒绝时停，并说明需要允许协作者向 `agents` 直接推送。不要改成向 `main` 开合并请求。
 
-`api/<提供方>/` 可以有多份文件，文件名由提供方决定，不规定必须是单一的 `openapi.json`。调用方只读这些文件来写调用。发现文件里的形状不够用时，在 Issue 写「接口变更申请」，不要在前端仓库编一份平行的接口说明，也不要直接改 `api/`。
+## 不用询问的操作
 
-提供方（通常是 `be`）在自己的代码仓库修改接口定义并生成文件，把生成结果提交到 `api/<提供方>/`，然后回复原评论，写明文件名和路径。手改生成文件后再提交是不允许的，下一次生成会盖掉。
+评论、认领、开 Issue、改标签、把已确认的行为写入约定、提交生成出的接口文件、把需求标成已实现、向 `agents` 推送，都直接做。做完用几句话告知推送了什么、Issue 编号和当前身份。
 
-## 初始化协作仓库
+当前用户已经在对话里把行为说死时，直接写入 Issue 和「约定」，变更记录写 `用户确认`。Agent 之间仍不能给自己刚写的评论打 `✅ 确认`。
 
-用户还没有协作仓库时，先问清这三件事再动手：
+只有这些情况停下来问：
 
-- 空仓库的远程 URL（GitHub 或 GitLab）
-- 检出目录名，也就是 `.collab/` 下面的那一层
-- 参与方 id 列表，以及每一方的代码仓库地址。至少要有将要互相协作的那些端
+- 远程有提交，但不是这套协作目录
+- 判断不了自己的角色
+- 检出工作区不干净
+- 稳定分支不是 `agents` 的祖先
+- 向 `agents` 的推送被拒绝
+- 变基冲突落在约定正文、接口文件或其他不能按行合并的文件上
+- 要废弃一份需求，或要删掉已经确认的约定
+- 要使用 Apifox 或其他需要登录的外部工具
 
-然后在产品仓库执行：
+## 初始化
 
-1. `git clone <URL> .collab/<目录名>`。按「排除出版本库」写好 `.gitignore`，再做后面的事。
-2. 把 `templates/README.md`、`templates/AGENTS.md` 写入检出根目录，替换 `{{repo_name}}` `{{parties}}` `{{checkout_dir}}` `{{remote_url}}` `{{gitlab_path}}` 或 `{{github_path}}`。用不到的那种平台命令从 README 删掉。
-3. 写入 `templates/collaborators.md`、`templates/reqs-README.md`、`templates/api-README.md`。`api/README.md` 的 `{{external_tool}}` 先写成「尚未决定。第一次发布接口给人浏览或测试时，由发布方询问用户。」
-4. 每个参与方：`parties/<id>/README.md` 用 `templates/party-README.md`，并建立 `parties/<id>/domains/`。
-5. 每个会发布接口的提供方：`api/<id>/README.md` 用 `templates/api-provider-README.md`。
-6. GitLab 把 `templates/issue.md` 放到 `.gitlab/issue_templates/需求.md`。GitHub 放到 `.github/ISSUE_TEMPLATE/需求.md`，并按该平台的模板格式补上 front matter。
-7. 在产品仓库的 `AGENTS.md` 加上一句：跨仓库事项先读 `.collab/<目录名>/AGENTS.md`。
-8. 开分支。向用户展示将要提交的文件列表，同意后再推送，并请用户打开主分支保护。
+缺了这些才问，已经说过的不要再问：协作仓库的远程 URL；每个参与方的 id、角色、代码仓库地址。检出目录名能从 URL 最后一段得到就直接用。参与方 id 用 `backend`、`user`、`admin` 这种名字，不要用角色名当 id。
 
-`templates/req.md` 留在 skill 里，供以后新建需求时填空，不必放进协作仓库。
+然后：
 
-## 对外接口工具
+1. 按「排除出版本库」写好产品仓库的 `.gitignore`。
+2. `git clone <URL> .collab/<目录名>`。
+3. 判断能不能初始化。在检出里执行 `git rev-list --all --count`。`HEAD` 还不存在时当作计数 `0`。不要在判断之前写入文件。
+4. 计数是 `0`：执行 `git checkout --orphan agents`，然后初始化。
+5. 计数大于 `0`：列出全部文件。
+   - 已有 `AGENTS.md`、`collaborators.md`、`parties/`、`reqs/`、`api/` 之一：不要初始化，改走「已经有协作仓库」。
+   - 只有 `README.md`、`README`、`LICENSE`、`LICENSE.md`、`.gitignore` 这些平台种子文件：可以初始化。在当前提交上执行 `git checkout -B agents`，不要使用 `--orphan`。这样原来的稳定分支仍是 `agents` 的祖先。
+   - 还有别的文件：停下来，列出文件。
 
-正本永远是协作仓库里的接口文件。Apifox 或其他同类工具只是把这些文件提供给人点选和测试。需求、约定、Issue 不放进这些工具。
+初始化：
 
-不要去找 `.apifox/settings.json` 或任何产品仓库配置来推断用不用。用户此时通常还没准备过。第一次需要对外发布时，由发布方（一般是后端角色）向用户说明用途，请用户选择：
+1. 写入 `templates/README.md`、`templates/AGENTS.md`。替换 `{{repo_name}}` `{{parties}}` `{{checkout_dir}}` `{{remote_url}}` `{{gitlab_path}}` `{{github_path}}` `{{gitlab_path_encoded}}`。`{{gitlab_path_encoded}}` 是 `{{gitlab_path}}` 的每个 `/` 换成 `%2F`。删掉用不到的 `<!-- platform:gitlab -->` 或 `<!-- platform:github -->` 整段。
+2. 写入 `templates/collaborators.md`、`templates/reqs-README.md`（放到 `reqs/README.md`）、`templates/req.md`（放到 `reqs/_template.md`）、`templates/api-README.md`、`templates/domain.md`（放到 `parties/_domain.md`）。`api/README.md` 的 `{{external_tool}}` 写成「尚未决定。第一次发布接口给人浏览或测试时，由发布方询问用户。」
+3. 每个参与方：`parties/<id>/README.md` 用 `templates/party-README.md`，并建立 `parties/<id>/domains/`。
+4. 角色是 `be` 的参与方：`api/<id>/README.md` 用 `templates/api-provider-README.md`。其他方先不建 `api/` 目录。
+5. 按「身份」选出 id，把名册行放进同一次提交。先不要单独推送。
+6. GitLab 把 `templates/issue.md` 放到 `.gitlab/issue_templates/需求.md`。GitHub 把 `templates/github-issue.md` 放到 `.github/ISSUE_TEMPLATE/需求.md`。
+7. 提交，说明写 `初始化协作仓库`。远程还没有 `agents`，直接 `git push -u origin agents`。推送成功后再写 `identity.toml`。
+8. 只执行 README 里留下的那一平台的「补标签」命令。已存在就跳过，其他错误停。
+9. 尝试把默认分支设为 `agents`。GitHub 用 `gh repo edit {{github_path}} --default-branch agents`。GitLab 用 `glab api -X PUT "projects/{{gitlab_path_encoded}}" -f default_branch=agents`。失败只告知，不停下。
+10. 写入产品仓库的同步区块。
+11. 告知用户：以后只推 `agents`；若还要一个受保护的 `main`，从 `agents` 建出来并禁止直接推送，同时允许协作者推送 `agents`。然后按检出里的 `AGENTS.md` 开工。
 
-- 暂不使用。把这句话写进 `api/README.md`。之后开工不再追问，直到用户改口。
-- 使用 Apifox。当时带领用户做完这些事：安装 `apifox-cli`；执行 `apifox auth login`，令牌只进入这条命令，不进入仓库和聊天记录；在 Apifox 创建或指定项目；把项目 ID 写入后端产品仓库的 `.apifox/settings.json`，内容只有 `projectId`。该目录按「排除出版本库」留在本地，不提交。再把「使用 Apifox」和项目 ID 写入协作仓库的 `api/README.md`。
+## 已经有协作仓库
 
-接口文件进入 `api/<提供方>/` 并且合并之后，再按 Apifox CLI 导入这些文件。换用别的工具时，仍由发布方按同样的顺序询问用户、完成该工具自己的登录和项目设置，并把决定写进 `api/README.md`。工具写在产品仓库里的配置目录，一律按「排除出版本库」处理，不提交。
+不要重跑初始化，不要覆盖已有需求、约定和接口文件。
+
+1. `git fetch origin --prune`。
+2. 没有 `origin/agents` 时，从 `origin/main` 或当前默认分支建立 `agents` 并 `git push -u origin agents`。推送被拒绝就停。
+3. 按「分支与推送」检查稳定分支并拉取。
+4. 规则文件缺了固定句子时，按「固定规则」更新并推送。
+5. 产品仓库的同步区块缺了或和 `templates/product-sync.md` 不一致时补上。
+6. 缺身份就登记。缺标签就按 README 补。
+7. 读检出里的 `AGENTS.md` 并执行。
 
 ## 排除出版本库
 
@@ -122,4 +169,4 @@ id = "fe/cursor-k"
 .apifox/
 ```
 
-写完后向用户说明加了什么。若 `git status` 里这两处已经是已跟踪文件，先告诉用户，得到同意后再执行 `git rm -r --cached -- .collab .apifox`，只从索引去掉，不删除工作区里的文件。不要把这两处的内容写进提交说明以外的任何将要提交的文件。
+写完后告知用户加了什么。若 `git status` 里这两处已经是已跟踪文件，执行 `git rm -r --cached -- .collab .apifox`，只从索引去掉，不删除工作区里的文件。不要把这两处的内容写进提交说明以外的任何将要提交的文件。
