@@ -1,6 +1,6 @@
 # 协作规则
 
-工作分支是 `agents`。`main` 只是给人留的快照，日常读写都不走它。远程已经有 `agents` 时，每次 `git push` 之前执行 `git pull --rebase origin agents`。远程还没有这个分支时，直接 `git push -u origin agents`。
+工作分支是 `agents`。人从 agents 向 main 提合并请求。Agent 不读取、不推送 `main`。远程已经有 `agents` 时，每次 `git push` 之前执行 `git pull --rebase origin agents`。远程还没有这个分支时，直接 `git push -u origin agents`。
 
 本仓库是需求、已确认的约定、各方说明和接口文件的正本。聊天记录和各个产品仓库里的实现文档都不是跨方正本。代码仍在各自的产品仓库里改。
 
@@ -44,11 +44,10 @@ id = "fe/cursor-k"
 
 1. `git status --porcelain` 有输出就停，不要拉取覆盖。
 2. `git fetch origin --prune`，然后 `git checkout agents`。本地还没有这个分支时：`git checkout -b agents --track origin/agents`。
-3. 远程有 `main` 时执行 `git merge-base --is-ancestor origin/main origin/agents`。只有 `master` 时改用 `origin/master`。失败就停。
-4. `git pull --rebase origin agents`。
-5. 列出未关闭、且带有 `to-<你的角色>` 标签的 Issue。命令见 README。
-6. 打开这些 Issue。自己的参与方还没认领、或认领已经是自己的 id 时才处理。读 `@` 到你的 id、你的参与方、或（仅当该角色只有一个参与方）`@<角色>/*` 的评论，以及它们指向的 `reqs/*.md`。
-7. 读 `reqs/README.md` 里属于你的认领。
+3. `git pull --rebase origin agents`。
+4. 列出未关闭、且带有 `to-<你的角色>` 标签的 Issue。命令见 README。
+5. 打开这些 Issue。自己的参与方还没认领、或认领已经是自己的 id 时才处理。读 `@` 到你的 id、你的参与方、或（仅当该角色只有一个参与方）`@<角色>/*` 的评论，以及它们指向的 `reqs/*.md`。
+6. 读 `reqs/README.md` 里属于你的认领。
 
 不要为了找任务把 `parties/` 和全部 `reqs/` 读一遍。处理完直接做，不要先问能不能做。
 
@@ -74,7 +73,7 @@ git push origin agents
 - 自己的新编号和已有文件撞号：换下一个编号，再提交、再拉取、再推送。
 - 其他文件：`git rebase --abort`，告诉用户冲突路径，然后停。
 
-推送被拒绝时停，说明需要允许协作者向 `agents` 直接推送。不要改成向 `main` 开合并请求。
+推送被拒绝时停，说明需要允许协作者向 `agents` 直接推送。Agent 不要改去操作 `main`。人从 `agents` 向 `main` 提合并请求。
 
 一次提交只做一件事：新建一份需求、写入一项约定，或更新一个提供方的接口文件。提交说明以 `[<id>]` 开头，并写上 Issue 编号。
 

@@ -1,7 +1,7 @@
 <!-- cross-repo-collab:start -->
 ## 跨仓库协作
 
-跨仓库的需求、约定和接口文件在 `.collab/{{checkout_dir}}/`，正本是该检出里的 `agents` 分支。
+跨仓库的需求、约定和接口文件在 `.collab/{{checkout_dir}}/`，正本是该检出里的 `agents` 分支。Agent 只操作这个分支。人从 `agents` 向 `main` 提合并请求。
 
 这些时机要先进入该目录，执行 `git fetch origin --prune`、`git checkout agents`、`git pull --rebase origin agents`，再读 `AGENTS.md`：
 
