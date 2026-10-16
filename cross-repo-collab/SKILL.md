@@ -1,6 +1,6 @@
 ---
 name: cross-repo-collab
-description: "Use when people and agents across separate repositories share requirements, agreements, and API files in a git collaboration checkout at .collab/, or when that checkout is missing. Daily work happens on the agents branch: pull --rebase before push, and write conclusions back without waiting for a human merge. Triggers include 协作仓库, .collab, 接口变更, 需求约定, to-be, to-fe, and any change that depends on another repository's behavior."
+description: "Use when people and agents across separate repositories share requirements, agreements, and API files in a git collaboration checkout at .collab/, or when that checkout is missing. Agents only read and write the agents branch and pull --rebase before push. People open a merge request from agents into main. Triggers include 协作仓库, .collab, 接口变更, 需求约定, to-be, to-fe, and any change that depends on another repository's behavior."
 ---
 
 # 跨仓库协作
@@ -11,7 +11,7 @@ description: "Use when people and agents across separate repositories share requ
 
 这些内容如果留在聊天里，另一个仓库里的 Agent 看不到。如果各写各的文档，字段和行为会对不上。因此另有一个 Git 仓库作为正本：文件放已确认的内容和接口文件，Issue 放讨论和派发。每个产品仓库把这个正本检出到自己的 `.collab/` 里再读写。
 
-日常正本是协作仓库的 `agents` 分支。`main`（有的远程叫 `master`）只给人留快照，Agent 不向它推送，也不为了日常更新去开合并请求。
+日常读写的正本是协作仓库的 `agents` 分支。Agent 只操作这个分支，不读取、不推送 `main`。人从 `agents` 向 `main` 提合并请求。
 
 本 skill 管三件所有协作仓库都一样的事：工作分支、推送前拉取、哪些操作不用询问。评论格式、状态和目录在 `templates/AGENTS.md`，初始化时写入协作仓库。开工后读检出里的那份并执行。
 
@@ -21,6 +21,7 @@ description: "Use when people and agents across separate repositories share requ
 
 - `工作分支是 agents。`
 - `git pull --rebase origin agents`
+- `人从 agents 向 main 提合并请求。`
 
 更新时用模板重新生成这三份，填回仓库里已经写好的远程、目录名、参与方、平台和编码后的仓库路径：`AGENTS.md`、`README.md`、`reqs/_template.md`。参与方自己的 README 留着，不要覆盖。产品仓库里 `<!-- cross-repo-collab:start -->` 到 `<!-- cross-repo-collab:end -->` 的区块换成 `templates/product-sync.md`。
 
@@ -90,16 +91,17 @@ git push origin agents
 - 自己的新需求编号和已有文件撞号：给自己的文件换下一个编号，再提交、再拉取、再推送。
 - 其他文件：执行 `git rebase --abort`，告诉用户冲突路径，然后停。
 
-开工时还要确认稳定分支没有跑到前面：
+开工时只取 `agents`：
 
 ```bash
 git fetch origin --prune
 git checkout agents || git checkout -b agents --track origin/agents
+git pull --rebase origin agents
 ```
 
-远程有 `main` 时执行 `git merge-base --is-ancestor origin/main origin/agents`。远程没有 `main`、有 `master` 时，把命令里的 `main` 换成 `master`。命令失败就停：不要把稳定分支合并进来，也不要替人把 `agents` 合并进稳定分支。远程还没有稳定分支时跳过这次比较。
+不比较、不合并、不推送 `main`。人从 `agents` 向 `main` 提合并请求，Agent 不代劳。
 
-`agents` 推送被拒绝时停，并说明需要允许协作者向 `agents` 直接推送。不要改成向 `main` 开合并请求。
+`agents` 推送被拒绝时停，并说明需要允许协作者向 `agents` 直接推送。不要改去操作 `main`。
 
 ## 不用询问的操作
 
@@ -112,7 +114,6 @@ git checkout agents || git checkout -b agents --track origin/agents
 - 远程有提交，但不是这套协作目录
 - 判断不了自己的角色或参与方
 - 检出工作区不干净
-- 稳定分支不是 `agents` 的祖先
 - 向 `agents` 的推送被拒绝
 - 变基冲突落在约定正文、接口文件或其他不能按行合并的文件上
 - 要废弃一份需求，或要删掉已经确认的约定
@@ -130,7 +131,7 @@ git checkout agents || git checkout -b agents --track origin/agents
 4. 计数是 `0`：执行 `git checkout --orphan agents`，然后初始化。
 5. 计数大于 `0`：列出全部文件。
    - 已有 `AGENTS.md`、`collaborators.md`、`parties/`、`reqs/`、`api/` 之一：不要初始化，改走「已经有协作仓库」。
-   - 只有 `README.md`、`README`、`LICENSE`、`LICENSE.md`、`.gitignore` 这些平台种子文件：可以初始化。在当前提交上执行 `git checkout -B agents`，不要使用 `--orphan`。这样原来的稳定分支仍是 `agents` 的祖先。
+   - 只有 `README.md`、`README`、`LICENSE`、`LICENSE.md`、`.gitignore` 这些平台种子文件：可以初始化。在当前提交上执行 `git checkout -B agents`，保留已有提交。不要使用 `--orphan`。
    - 还有别的文件：停下来，列出文件。
 
 初始化：
@@ -143,17 +144,16 @@ git checkout agents || git checkout -b agents --track origin/agents
 6. GitLab 把 `templates/issue.md` 放到 `.gitlab/issue_templates/需求.md`。GitHub 把 `templates/github-issue.md` 放到 `.github/ISSUE_TEMPLATE/需求.md`。
 7. 提交，说明写 `初始化协作仓库`。远程还没有 `agents`，直接 `git push -u origin agents`。推送成功后再写 `identity.toml`。
 8. 只执行 README 里留下的那一平台的「补标签」命令。已存在就跳过，其他错误停。
-9. 尝试把默认分支设为 `agents`。GitHub 用 `gh repo edit {{github_path}} --default-branch agents`。GitLab 用 `glab api -X PUT "projects/{{gitlab_path_encoded}}" -f default_branch=agents`。失败只告知，不停下。
-10. 写入产品仓库的同步区块。
-11. 告知用户：以后只推 `agents`；若还要一个受保护的 `main`，从 `agents` 建出来并禁止直接推送，同时允许协作者推送 `agents`。然后按检出里的 `AGENTS.md` 开工。
+9. 写入产品仓库的同步区块。
+10. 告知用户：Agent 只推 `agents`，需要允许协作者直接推送这个分支。人从 `agents` 向 `main` 提合并请求。然后按检出里的 `AGENTS.md` 开工。
 
 ## 已经有协作仓库
 
 不要重跑初始化，不要覆盖已有需求、约定和接口文件。
 
 1. `git fetch origin --prune`。
-2. 没有 `origin/agents` 时，从 `origin/main` 或当前默认分支建立 `agents` 并 `git push -u origin agents`。推送被拒绝就停。
-3. 按「分支与推送」检查稳定分支并拉取。
+2. 没有 `origin/agents` 时，从当前默认分支的尖端建立 `agents` 并 `git push -u origin agents`。推送被拒绝就停。之后只操作 `agents`。
+3. 按「分支与推送」拉取 `agents`。不要查看 `main`。
 4. 规则文件缺了固定句子时，按「固定规则」更新并推送。
 5. 产品仓库的同步区块缺了或和 `templates/product-sync.md` 不一致时补上。
 6. 缺身份就登记。缺标签就按 README 补。
