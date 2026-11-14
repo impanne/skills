@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0b0e14" />
+<title>俄罗斯方块 · Tetris</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%230b0e14'/%3E%3Crect x='3' y='3' width='5' height='5' fill='%235ad1ff'/%3E%3Crect x='8' y='8' width='5' height='5' fill='%23a97bff'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="app">
+  <aside class="panel panel-left">
+    <section class="card hold-card">
+      <h2 class="card-title">暂存 <span class="key">C</span></h2>
+      <canvas id="hold" class="mini"></canvas>
+    </section>
+
+    <section class="card stats">
+      <div class="stat">
+        <span class="stat-label">分数</span>
+        <strong id="score" class="stat-value">0</strong>
+      </div>
+      <div class="stat">
+        <span class="stat-label">等级</span>
+        <strong id="level" class="stat-value">1</strong>
+      </div>
+      <div class="stat">
+        <span class="stat-label">行数</span>
+        <strong id="lines" class="stat-value">0</strong>
+      </div>
+      <div class="stat">
+        <span class="stat-label">最高</span>
+        <strong id="best" class="stat-value dim">0</strong>
+      </div>
+    </section>
+
+    <div class="actions">
+      <button id="pause-btn" class="btn" type="button">暂停</button>
+      <button id="restart-btn" class="btn ghost" type="button">重开</button>
+    </div>
+  </aside>
+
+  <main id="stage" class="stage">
+    <div class="board-frame">
+      <canvas id="board" class="board" aria-label="游戏区域"></canvas>
+      <div id="overlay" class="overlay">
+        <div class="overlay-inner">
+          <h1 id="overlay-title">俄罗斯方块</h1>
+          <p id="overlay-text">方向键移动，空格硬降，C 暂存</p>
+          <button id="start-btn" class="btn primary" type="button">开始游戏</button>
+          <button id="overlay-restart" class="btn ghost small" type="button" hidden>重新开始</button>
+          <p id="overlay-hint" class="overlay-hint">P 暂停 · R 重开</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <aside class="panel panel-right">
+    <section class="card next-card">
+      <h2 class="card-title">下一个</h2>
+      <canvas id="next" class="mini next"></canvas>
+    </section>
+  </aside>
+
+  <div id="pad" class="pad">
+    <button class="pad-btn" data-action="rotate-ccw" type="button" aria-label="逆时针旋转">⟲</button>
+    <button class="pad-btn" data-action="rotate-cw" type="button" aria-label="顺时针旋转">⟳</button>
+    <button class="pad-btn" data-action="hold" type="button" aria-label="暂存">暂存</button>
+    <button class="pad-btn" data-action="pause" type="button" aria-label="暂停">暂停</button>
+    <button class="pad-btn" data-action="left" type="button" aria-label="左移">←</button>
+    <button class="pad-btn" data-action="down" type="button" aria-label="软降">↓</button>
+    <button class="pad-btn" data-action="right" type="button" aria-label="右移">→</button>
+    <button class="pad-btn" data-action="drop" type="button" aria-label="硬降">硬降 ⤓</button>
+  </div>
+
+  <p class="hint-desktop">
+    ← → 移动 · ↑ / X 顺时针 · Z / Ctrl 逆时针 · ↓ 软降 · 空格 硬降 · C / Shift 暂存 · P 暂停 · R 重开
+  </p>
+</div>
+<script src="game.js"></script>
+</body>
+</html>
